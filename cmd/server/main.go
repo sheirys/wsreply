@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,7 +19,10 @@ func main() {
 
 	app := &wsreply.Application{
 		Broker: broker.NewInMemBroker(),
+		Addr:   ":8886",
+		Logger: log.New(os.Stdout, "server-", 1),
 	}
+	app.Start()
 
 	<-stop
 	app.Stop()

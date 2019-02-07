@@ -9,5 +9,5 @@ const (
 
 type Message struct {
 	Op      Operand `json:"op"`
-	Payload string  `json:"string"`
+	Payload []byte  `json:"payload"`
 }

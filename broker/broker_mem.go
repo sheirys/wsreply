@@ -1,10 +1,15 @@
 package broker
 
-import "context"
+import (
+	"context"
+	"log"
+	"os"
+)
 
 type InMemBroker struct {
-	ctx   context.Context
-	queue chan Message
+	ctx    context.Context
+	queue  chan Message
+	logger *log.Logger
 
 	subscribers            map[*Stream]struct{}
 	subscribe, unsubscribe chan *Stream
@@ -36,11 +41,14 @@ func (b *InMemBroker) Unsubscribe(s *Stream) error {
 }
 
 func (b *InMemBroker) Publish(msg Message) error {
+	b.logger.Printf("publishing message %#v", msg)
 	b.queue <- msg
 	return nil
 }
 
 func (b *InMemBroker) Start(ctx context.Context) error {
+	b.ctx = ctx
+
 	go func() {
 		for {
 			select {
@@ -50,11 +58,13 @@ func (b *InMemBroker) Start(ctx context.Context) error {
 			case sub := <-b.subscribe:
 				b.subscribers[sub] = struct{}{}
 				b.broadcastNewSubscriber()
+				b.logger.Printf("new stream %x (pub: %t) (streams: %d)", &sub, sub.isPublisher, len(b.subscribers))
 			case unsub := <-b.unsubscribe:
 				delete(b.subscribers, unsub)
 				if len(b.subscribers) == 0 {
 					b.broadcastNoSubscribers()
 				}
+				b.logger.Printf("unsubscribed stream %x (streams: %d)", &unsub, len(b.subscribers))
 			case msg := <-b.queue:
 				b.broadcastToSubscribers(msg)
 			}
@@ -71,6 +81,7 @@ func NewInMemBroker() *InMemBroker {
 		subscribe:   make(chan *Stream, 5),
 		unsubscribe: make(chan *Stream, 5),
 		subscribers: make(map[*Stream]struct{}),
+		logger:      log.New(os.Stdout, "broker-", 1),
 	}
 }
 
