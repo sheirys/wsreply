@@ -1,6 +1,10 @@
 package broker
 
-import "context"
+import (
+	"context"
+
+	"github.com/gorilla/websocket"
+)
 
 // Broker defines publish/subscribe system. In general this is simple fan
 // out system but with some rules. When new sub
@@ -19,12 +23,12 @@ type Broker interface {
 	// produced by broker should appear e.g. in this stream notifications
 	// about new subcscriber connection or if there is no other
 	// subscribers left should be pushed.
-	NewPublisherStream() (*Stream, error)
+	AttachPublisherStream(*websocket.Conn) error
 
 	// NewSubscriberStream should return new subscribers stream where
 	// messages pushed by publishers should appear.
-	NewSubscriberStream() (*Stream, error)
+	AttachSubscriberStream(*websocket.Conn) error
 
 	// Unsubscribe should close passed stream.
-	Unsubscribe(*Stream) error
+	Deattach(*websocket.Conn) error
 }

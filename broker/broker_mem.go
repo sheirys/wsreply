@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"os"
+
+	"github.com/gorilla/websocket"
 )
 
 type InMemBroker struct {
@@ -11,32 +13,31 @@ type InMemBroker struct {
 	queue  chan Message
 	logger *log.Logger
 
-	subscribers            map[*Stream]struct{}
-	subscribe, unsubscribe chan *Stream
+	subscribers map[*websocket.Conn]bool
+	unsubscribe chan *websocket.Conn
+	subscribe   chan *Stream
 }
 
-func (b *InMemBroker) NewSubscriberStream() (*Stream, error) {
+func (b *InMemBroker) AttachSubscriberStream(ws *websocket.Conn) error {
 	s := &Stream{
-		stream:      make(chan Message, 5),
+		stream:      ws,
 		isPublisher: false,
-		broker:      b,
 	}
 	b.subscribe <- s
-	return s, nil
+	return nil
 }
 
-func (b *InMemBroker) NewPublisherStream() (*Stream, error) {
+func (b *InMemBroker) AttachPublisherStream(ws *websocket.Conn) error {
 	s := &Stream{
-		stream:      make(chan Message, 5),
+		stream:      ws,
 		isPublisher: true,
-		broker:      b,
 	}
 	b.subscribe <- s
-	return s, nil
+	return nil
 }
 
-func (b *InMemBroker) Unsubscribe(s *Stream) error {
-	b.unsubscribe <- s
+func (b *InMemBroker) Deattach(ws *websocket.Conn) error {
+	b.unsubscribe <- ws
 	return nil
 }
 
@@ -56,7 +57,7 @@ func (b *InMemBroker) Start(ctx context.Context) error {
 				// TODO: call mass unsubscribe
 				return
 			case sub := <-b.subscribe:
-				b.subscribers[sub] = struct{}{}
+				b.subscribers[sub.stream] = sub.isPublisher
 				b.broadcastNewSubscriber()
 				b.logger.Printf("new stream %x (pub: %t) (streams: %d)", &sub, sub.isPublisher, len(b.subscribers))
 			case unsub := <-b.unsubscribe:
@@ -79,8 +80,8 @@ func NewInMemBroker() *InMemBroker {
 	return &InMemBroker{
 		queue:       make(chan Message, 5),
 		subscribe:   make(chan *Stream, 5),
-		unsubscribe: make(chan *Stream, 5),
-		subscribers: make(map[*Stream]struct{}),
+		unsubscribe: make(chan *websocket.Conn, 5),
+		subscribers: make(map[*websocket.Conn]bool),
 		logger:      log.New(os.Stdout, "broker-", 1),
 	}
 }
@@ -103,26 +104,20 @@ func (b *InMemBroker) broadcastNoSubscribers() {
 
 // broadcastToSubscribers will broadcast message to all subscribers in broker.
 func (b *InMemBroker) broadcastToSubscribers(msg Message) {
-	for s := range b.subscribers {
-		if s.isPublisher {
+	for s, isPublisher := range b.subscribers {
+		if isPublisher {
 			continue
 		}
-		select {
-		case s.stream <- msg:
-		default:
-		}
+		go s.WriteJSON(msg)
 	}
 }
 
 // broadcastToPublishers will broadcast message to all publishers in broker.
 func (b *InMemBroker) broadcastToPublishers(msg Message) {
-	for p := range b.subscribers {
-		if !p.isPublisher {
+	for p, isPublisher := range b.subscribers {
+		if !isPublisher {
 			continue
 		}
-		select {
-		case p.stream <- msg:
-		default:
-		}
+		go p.WriteJSON(msg)
 	}
 }

@@ -14,9 +14,8 @@ var upgrader = websocket.Upgrader{
 
 func (a *Application) PublisherWS(w http.ResponseWriter, r *http.Request) {
 	var (
-		ws     *websocket.Conn
-		stream *broker.Stream
-		err    error
+		ws  *websocket.Conn
+		err error
 	)
 
 	if ws, err = upgrader.Upgrade(w, r, nil); err != nil {
@@ -25,11 +24,11 @@ func (a *Application) PublisherWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
-	if stream, err = a.Broker.NewPublisherStream(); err != nil {
+	if err := a.Broker.AttachPublisherStream(ws); err != nil {
 		a.Logger.Println(err)
 		return
 	}
-	defer stream.Close()
+	defer a.Broker.Deattach(ws)
 
 	for {
 		_, body, err := ws.ReadMessage()
@@ -53,12 +52,9 @@ func (a *Application) PublisherWS(w http.ResponseWriter, r *http.Request) {
 
 func (a *Application) SubscriberWS(w http.ResponseWriter, r *http.Request) {
 	var (
-		ws     *websocket.Conn
-		stream *broker.Stream
-		err    error
+		ws  *websocket.Conn
+		err error
 	)
-
-	defer ws.Close()
 
 	if ws, err = upgrader.Upgrade(w, r, nil); err != nil {
 		a.Logger.Println(err)
@@ -66,19 +62,22 @@ func (a *Application) SubscriberWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer ws.Close()
 
-	if stream, err = a.Broker.NewSubscriberStream(); err != nil {
+	if err = a.Broker.AttachSubscriberStream(ws); err != nil {
 		a.Logger.Println(err)
 		return
 	}
-	defer stream.Close()
+	defer a.Broker.Deattach(ws)
 
 	for {
-		select {
-		case message := <-stream.ReadWithNotify():
-			if err = ws.WriteJSON(message); err != nil {
-				a.Logger.Println(err)
-				return
-			}
+		_, body, err := ws.ReadMessage()
+		if err != nil {
+			a.Logger.Println(err)
+			return
+		}
+
+		if err = ws.WriteMessage(websocket.TextMessage, body); err != nil {
+			a.Logger.Println(err)
+			return
 		}
 
 	}
