@@ -1,12 +1,16 @@
 package broker
 
+import "context"
+
 // Broker defines publish/subscribe system. In general this is simple fan
 // out system but with some rules. When new sub
 type Broker interface {
 
 	// Start should initialize all variables required by broker. This
-	// should be called before usage of other broker functions.
-	Start() error
+	// should be called before usage of other broker functions. When
+	// context dies, all subscribers should be unsubscribed so
+	// publishers know that there is nothing left.
+	Start(context.Context) error
 
 	// Publish should send message to all subscribers in broker.
 	Publish(Message) error
@@ -23,7 +27,4 @@ type Broker interface {
 
 	// Unsubscribe should close passed stream.
 	Unsubscribe(*Stream) error
-
-	// Stop should unsubscribe all streams and stop broker.
-	Stop() error
 }

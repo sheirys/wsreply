@@ -1,11 +1,13 @@
 package broker
 
-type InMemBroker struct {
-	queue chan Message
-	die   chan struct{}
+import "context"
 
-	subscribers, publishers map[*Stream]struct{}
-	subscribe, unsubscribe  chan *Stream
+type InMemBroker struct {
+	ctx   context.Context
+	queue chan Message
+
+	subscribers            map[*Stream]struct{}
+	subscribe, unsubscribe chan *Stream
 }
 
 func (b *InMemBroker) NewSubscriberStream() (*Stream, error) {
@@ -38,16 +40,12 @@ func (b *InMemBroker) Publish(msg Message) error {
 	return nil
 }
 
-func (b *InMemBroker) Stop() error {
-	close(b.die)
-	return nil
-}
-
-func (b *InMemBroker) Start() error {
+func (b *InMemBroker) Start(ctx context.Context) error {
 	go func() {
 		for {
 			select {
-			case <-b.die:
+			case <-b.ctx.Done():
+				// TODO: call mass unsubscribe
 				return
 			case sub := <-b.subscribe:
 				b.subscribers[sub] = struct{}{}
@@ -64,6 +62,16 @@ func (b *InMemBroker) Start() error {
 	}()
 
 	return nil
+}
+
+func NewInMemBroker() *InMemBroker {
+	// FIXME: here is a lot of hardcoded sizes. Pass by argument or const?
+	return &InMemBroker{
+		queue:       make(chan Message, 5),
+		subscribe:   make(chan *Stream, 5),
+		unsubscribe: make(chan *Stream, 5),
+		subscribers: make(map[*Stream]struct{}),
+	}
 }
 
 // broadcastNewSubscriber will notify all publishers that new subscribers has
@@ -97,7 +105,7 @@ func (b *InMemBroker) broadcastToSubscribers(msg Message) {
 
 // broadcastToPublishers will broadcast message to all publishers in broker.
 func (b *InMemBroker) broadcastToPublishers(msg Message) {
-	for p := range b.publishers {
+	for p := range b.subscribers {
 		if !p.isPublisher {
 			continue
 		}
