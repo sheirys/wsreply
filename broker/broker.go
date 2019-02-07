@@ -12,8 +12,8 @@ type Broker interface {
 	// publishers know that there is nothing left.
 	Start(context.Context) error
 
-	// Publish should send message to all subscribers in broker.
-	Publish(Message) error
+	// Broadcast should send message to all subscribers in broker.
+	Broadcast(Message) error
 
 	// NewPublisher should return new publishers stream, where messages
 	// produced by broker should appear e.g. in this stream notifications

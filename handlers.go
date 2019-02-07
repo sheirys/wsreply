@@ -43,6 +43,11 @@ func (a *Application) PublisherWS(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		a.Broker.Broadcast(broker.Message{
+			Op:      broker.OpMessage,
+			Payload: Translate(body),
+		})
+
 	}
 }
 
@@ -52,6 +57,8 @@ func (a *Application) SubscriberWS(w http.ResponseWriter, r *http.Request) {
 		stream *broker.Stream
 		err    error
 	)
+
+	defer ws.Close()
 
 	if ws, err = upgrader.Upgrade(w, r, nil); err != nil {
 		a.Logger.Println(err)
@@ -68,7 +75,7 @@ func (a *Application) SubscriberWS(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case message := <-stream.ReadWithNotify():
-			if err = ws.WriteMessage(websocket.TextMessage, message.Payload); err != nil {
+			if err = ws.WriteJSON(message); err != nil {
 				a.Logger.Println(err)
 				return
 			}

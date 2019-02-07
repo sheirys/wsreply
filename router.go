@@ -1,6 +1,8 @@
 package wsreply
 
-import "net/http"
+import (
+	"net/http"
+)
 
 func (a *Application) router() *http.ServeMux {
 	mux := http.NewServeMux()

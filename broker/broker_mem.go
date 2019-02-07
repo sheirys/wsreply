@@ -40,8 +40,8 @@ func (b *InMemBroker) Unsubscribe(s *Stream) error {
 	return nil
 }
 
-func (b *InMemBroker) Publish(msg Message) error {
-	b.logger.Printf("publishing message %#v", msg)
+func (b *InMemBroker) Broadcast(msg Message) error {
+	b.logger.Printf("broadcasting message %#v", msg)
 	b.queue <- msg
 	return nil
 }

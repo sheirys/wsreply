@@ -5,6 +5,7 @@ type Operand int
 const (
 	OpNewSubscriber Operand = iota
 	OpNoSubscribers
+	OpMessage
 )
 
 type Message struct {
