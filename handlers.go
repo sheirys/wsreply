@@ -12,15 +12,6 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func (a *Application) router() *http.ServeMux {
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/sub", a.SubscriberWS)
-	mux.HandleFunc("/pub", a.PublisherWS)
-
-	return mux
-}
-
 func (a *Application) PublisherWS(w http.ResponseWriter, r *http.Request) {
 	var (
 		ws     *websocket.Conn
