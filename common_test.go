@@ -1,8 +1,9 @@
-package main
+package wsreply_test
 
 import (
 	"testing"
 
+	"github.com/sheirys/wsreply"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,12 +26,16 @@ func TestTranslate(t *testing.T) {
 		},
 		{
 			Message:  []byte(""),
-			Expected: []byte(""),
+			Expected: []byte(nil),
+		},
+		{
+			Message:  []byte(nil),
+			Expected: []byte(nil),
 		},
 	}
 
 	for i, v := range testTable {
-		got := translate(v.Message)
+		got := wsreply.Translate(v.Message)
 		assert.Equal(t, got, v.Expected, "case %d failed", i)
 	}
 }
