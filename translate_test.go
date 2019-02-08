@@ -13,12 +13,12 @@ func TestTranslate(t *testing.T) {
 		Expected []byte
 	}{
 		{
-			Message:  []byte("labas?"),
-			Expected: []byte("labas!"),
+			Message:  []byte("labas!"),
+			Expected: []byte("labas?"),
 		},
 		{
-			Message:  []byte("???"),
-			Expected: []byte("!!!"),
+			Message:  []byte("!!!"),
+			Expected: []byte("???"),
 		},
 		{
 			Message:  []byte("123"),
