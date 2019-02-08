@@ -8,9 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/sacOO7/gowebsocket"
 	"github.com/sheirys/wsreply/broker"
+	"github.com/sirupsen/logrus"
 )
 
 var kills = []os.Signal{syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL}
