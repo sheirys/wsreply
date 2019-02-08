@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
@@ -14,7 +15,7 @@ type Broker interface {
 	// should be called before usage of other broker functions. When
 	// context dies, all subscribers should be unsubscribed so
 	// publishers know that there is nothing left.
-	Start(context.Context) error
+	Start(context.Context, *sync.WaitGroup) error
 
 	// Broadcast should send message to all subscribers in broker.
 	Broadcast(Message) error

@@ -1,6 +1,7 @@
 package wsreply
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -19,13 +20,13 @@ func (a *Application) PublisherWS(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if ws, err = upgrader.Upgrade(w, r, nil); err != nil {
-		a.Logger.Println(err)
+		a.Log.Println(err)
 		return
 	}
 	defer ws.Close()
 
 	if err := a.Broker.AttachPublisherStream(ws); err != nil {
-		a.Logger.Println(err)
+		a.Log.Println(err)
 		return
 	}
 	defer a.Broker.Deattach(ws)
@@ -33,20 +34,17 @@ func (a *Application) PublisherWS(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, body, err := ws.ReadMessage()
 		if err != nil {
-			a.Logger.Println(err)
+			a.Log.Println(err)
 			return
 		}
 
-		if err = ws.WriteMessage(websocket.TextMessage, body); err != nil {
-			a.Logger.Println(err)
+		message := broker.Message{}
+		if err := json.Unmarshal(body, &message); err != nil {
+			a.Log.Println(err)
 			return
 		}
-
-		a.Broker.Broadcast(broker.Message{
-			Op:      broker.OpMessage,
-			Payload: Translate(body),
-		})
-
+		message.Payload = Translate(message.Payload)
+		a.Broker.Broadcast(message)
 	}
 }
 
@@ -57,13 +55,13 @@ func (a *Application) SubscriberWS(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if ws, err = upgrader.Upgrade(w, r, nil); err != nil {
-		a.Logger.Println(err)
+		a.Log.Println(err)
 		return
 	}
 	defer ws.Close()
 
 	if err = a.Broker.AttachSubscriberStream(ws); err != nil {
-		a.Logger.Println(err)
+		a.Log.Println(err)
 		return
 	}
 	defer a.Broker.Deattach(ws)
@@ -71,14 +69,13 @@ func (a *Application) SubscriberWS(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, body, err := ws.ReadMessage()
 		if err != nil {
-			a.Logger.Println(err)
+			a.Log.Println(err)
 			return
 		}
 
 		if err = ws.WriteMessage(websocket.TextMessage, body); err != nil {
-			a.Logger.Println(err)
+			a.Log.Println(err)
 			return
 		}
-
 	}
 }

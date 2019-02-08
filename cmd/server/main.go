@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -14,13 +15,16 @@ var kills = []os.Signal{syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL}
 
 func main() {
 
+	listen := flag.String("l", "localhost:8886", "listen on")
+	flag.Parse()
+
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, kills...)
 
 	app := &wsreply.Application{
 		Broker: broker.NewInMemBroker(),
-		Addr:   ":8886",
-		Logger: log.New(os.Stdout, "server-", 1),
+		Addr:   *listen,
+		Log:    log.New(os.Stdout, "server-", 1),
 	}
 	app.Start()
 

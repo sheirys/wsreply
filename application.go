@@ -17,7 +17,7 @@ type Application struct {
 
 	Addr   string
 	Broker broker.Broker
-	Logger *log.Logger
+	Log    *log.Logger
 }
 
 func (a *Application) Start() error {
@@ -28,15 +28,18 @@ func (a *Application) Start() error {
 		Addr:    a.Addr,
 		Handler: a.router(),
 	}
+	a.Log.Printf("starting on %s", a.Addr)
 
-	if err := a.Broker.Start(a.ctx); err != nil {
+	if err := a.Broker.Start(a.ctx, a.wg); err != nil {
 		return err
 	}
 
+	a.wg.Add(1)
 	go func() {
 		if err := a.http.ListenAndServe(); err != nil {
-			a.Logger.Fatal(err)
+			a.Log.Println(err)
 		}
+		a.wg.Done()
 	}()
 
 	return nil
