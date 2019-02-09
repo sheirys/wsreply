@@ -1,8 +1,8 @@
 package wsreply
 
-import "bytes"
+import "strings"
 
 // Translate will change "!" symbols to "?" in provided message.
-func Translate(m []byte) []byte {
-	return bytes.Replace(m, []byte("!"), []byte("?"), -1)
+func Translate(m string) string {
+	return strings.Replace(m, "!", "?", -1)
 }

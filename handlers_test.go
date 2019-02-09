@@ -11,18 +11,18 @@ import (
 	"github.com/sheirys/wsreply/broker"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// testApplication will initialize default application for testing.
-func testApplication() *wsreply.Application {
-	app := &wsreply.Application{
+// testServer will initialize default wsreply server for testing.
+func testServer() *wsreply.Server {
+	srv := &wsreply.Server{
 		Broker: broker.NewInMemBroker(true),
 		Log:    logrus.New(),
 	}
-	app.Init()
-	app.StartBroker()
-
-	return app
+	srv.Init()
+	srv.StartBroker()
+	return srv
 }
 
 // connectWithWS will initialize ws connection to testserver
@@ -32,54 +32,56 @@ func connectWithWS(s *httptest.Server) (*websocket.Conn, error) {
 	return ws, err
 }
 
+// TestWSSubscriberCanConnect will test if subscriber is able to connect to
+// server.
 func TestWSSubscriberCanConnect(t *testing.T) {
+	srv := testServer()
+	defer srv.Stop()
 
-	app := testApplication()
-
-	s := httptest.NewServer(http.HandlerFunc(app.WSSubscriber))
+	s := httptest.NewServer(http.HandlerFunc(srv.WSSubscriber))
 	defer s.Close()
 
 	ws, err := connectWithWS(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer ws.Close()
 }
 
 func TestWSPublisherCanConnect(t *testing.T) {
+	srv := testServer()
+	defer srv.Stop()
 
-	app := testApplication()
-
-	s := httptest.NewServer(http.HandlerFunc(app.WSPublisher))
+	s := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))
 	defer s.Close()
 
 	ws, err := connectWithWS(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer ws.Close()
 }
 
 func TestWSPublisherCanPublish(t *testing.T) {
+	srv := testServer()
+	defer srv.Stop()
 
-	app := testApplication()
-
-	s := httptest.NewServer(http.HandlerFunc(app.WSPublisher))
+	s := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))
 	defer s.Close()
 
 	ws, err := connectWithWS(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer ws.Close()
 
-	err = ws.WriteJSON(broker.MsgMessage(nil))
+	err = ws.WriteJSON(broker.MsgMessage("random_data"))
 	assert.NoError(t, err)
 }
 
 func TestWSPublisherSyncNoSubscribers(t *testing.T) {
+	srv := testServer()
+	defer srv.Stop()
 
-	app := testApplication()
-
-	pubHandler := httptest.NewServer(http.HandlerFunc(app.WSPublisher))
+	pubHandler := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))
 	defer pubHandler.Close()
 
 	publisher, err := connectWithWS(pubHandler)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer publisher.Close()
 
 	err = publisher.WriteJSON(broker.MsgSyncSubscribers())
@@ -92,21 +94,21 @@ func TestWSPublisherSyncNoSubscribers(t *testing.T) {
 }
 
 func TestWSPublisherSyncHasSubscribers(t *testing.T) {
+	srv := testServer()
+	defer srv.Stop()
 
-	app := testApplication()
-
-	pubHandler := httptest.NewServer(http.HandlerFunc(app.WSPublisher))
+	pubHandler := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))
 	defer pubHandler.Close()
 
-	subHandler := httptest.NewServer(http.HandlerFunc(app.WSSubscriber))
+	subHandler := httptest.NewServer(http.HandlerFunc(srv.WSSubscriber))
 	defer subHandler.Close()
 
 	publisher, err := connectWithWS(pubHandler)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer publisher.Close()
 
 	subscriber, err := connectWithWS(subHandler)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer subscriber.Close()
 
 	err = publisher.WriteJSON(broker.MsgSyncSubscribers())
@@ -119,13 +121,13 @@ func TestWSPublisherSyncHasSubscribers(t *testing.T) {
 }
 
 func TestWSSubscriberReceives(t *testing.T) {
+	srv := testServer()
+	defer srv.Stop()
 
-	app := testApplication()
-
-	pubHandler := httptest.NewServer(http.HandlerFunc(app.WSPublisher))
+	pubHandler := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))
 	defer pubHandler.Close()
 
-	subHandler := httptest.NewServer(http.HandlerFunc(app.WSSubscriber))
+	subHandler := httptest.NewServer(http.HandlerFunc(srv.WSSubscriber))
 	defer subHandler.Close()
 
 	publisher, err := connectWithWS(pubHandler)
@@ -136,7 +138,7 @@ func TestWSSubscriberReceives(t *testing.T) {
 	assert.NoError(t, err)
 	defer subscriber.Close()
 
-	publishedMsg := broker.MsgMessage([]byte("random_data"))
+	publishedMsg := broker.MsgMessage("random_data")
 
 	err = publisher.WriteJSON(publishedMsg)
 	assert.NoError(t, err)
@@ -149,27 +151,28 @@ func TestWSSubscriberReceives(t *testing.T) {
 
 func TestMultipleWSSubscriberReceives(t *testing.T) {
 
-	app := testApplication()
+	srv := testServer()
+	defer srv.Stop()
 
-	pubHandler := httptest.NewServer(http.HandlerFunc(app.WSPublisher))
+	pubHandler := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))
 	defer pubHandler.Close()
 
-	subHandler := httptest.NewServer(http.HandlerFunc(app.WSSubscriber))
+	subHandler := httptest.NewServer(http.HandlerFunc(srv.WSSubscriber))
 	defer subHandler.Close()
 
 	publisher, err := connectWithWS(pubHandler)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer publisher.Close()
 
 	subscriber1, err := connectWithWS(subHandler)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer subscriber1.Close()
 
 	subscriber2, err := connectWithWS(subHandler)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer subscriber2.Close()
 
-	publishedMsg := broker.MsgMessage([]byte("random_data"))
+	publishedMsg := broker.MsgMessage("random_data")
 
 	err = publisher.WriteJSON(publishedMsg)
 	assert.NoError(t, err)

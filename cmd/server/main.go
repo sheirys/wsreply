@@ -22,15 +22,15 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, kills...)
 
-	app := &wsreply.Application{
+	srv := &wsreply.Server{
 		Broker: broker.NewInMemBroker(*debug),
 		Addr:   *listen,
 		Log:    logrus.New(),
 	}
-	app.Init()
-	app.StartBroker()
-	app.StartHTTP()
+	srv.Init()
+	srv.StartBroker()
+	srv.StartHTTP()
 
 	<-stop
-	app.Stop()
+	srv.Stop()
 }

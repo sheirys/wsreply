@@ -9,28 +9,24 @@ import (
 
 func TestTranslate(t *testing.T) {
 	testTable := []struct {
-		Message  []byte
-		Expected []byte
+		Message  string
+		Expected string
 	}{
 		{
-			Message:  []byte("labas!"),
-			Expected: []byte("labas?"),
+			Message:  "labas!",
+			Expected: "labas?",
 		},
 		{
-			Message:  []byte("!!!"),
-			Expected: []byte("???"),
+			Message:  "!!!",
+			Expected: "???",
 		},
 		{
-			Message:  []byte("123"),
-			Expected: []byte("123"),
+			Message:  "123",
+			Expected: "123",
 		},
 		{
-			Message:  []byte(""),
-			Expected: []byte(nil),
-		},
-		{
-			Message:  []byte(nil),
-			Expected: []byte(nil),
+			Message:  "",
+			Expected: "",
 		},
 	}
 

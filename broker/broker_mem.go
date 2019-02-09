@@ -48,7 +48,7 @@ func (b *InMemBroker) Deattach(ws *websocket.Conn) error {
 func (b *InMemBroker) Broadcast(msg Message) error {
 	b.Log.WithFields(logrus.Fields{
 		"op":   msg.TranslateOp(),
-		"data": string(msg.Payload),
+		"data": msg.Payload,
 	}).Info("streaming message")
 	b.message <- msg
 	return nil
@@ -60,8 +60,8 @@ func (b *InMemBroker) Start() error {
 	}
 	b.Log.Info("starting broker")
 
+	b.wg.Add(1)
 	go func() {
-		b.wg.Add(1)
 		for {
 			select {
 			case <-b.die:
@@ -99,12 +99,6 @@ func NewInMemBroker(debug bool) *InMemBroker {
 		Log:         logrus.New(),
 		Debug:       debug,
 	}
-}
-
-// broadcastNewSubscriber will notify all publishers that new subscribers has
-// connected.
-func (b *InMemBroker) broadcastNewSubscriber() {
-	b.broadcastToPublishers(MsgNewSubscriber())
 }
 
 // broadcastNoSubscribers will notify all publishers that there is no

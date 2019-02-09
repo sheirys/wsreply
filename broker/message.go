@@ -3,8 +3,7 @@ package broker
 type Operand int
 
 const (
-	OpNewSubscriber Operand = iota
-	OpNoSubscribers
+	OpNoSubscribers Operand = iota
 	OpHasSubscribers
 	OpSyncSubscribers
 	OpMessage
@@ -12,13 +11,11 @@ const (
 
 type Message struct {
 	Op      Operand `json:"op"`
-	Payload []byte  `json:"payload"`
+	Payload string  `json:"payload"`
 }
 
 func (m Message) TranslateOp() string {
 	switch m.Op {
-	case OpNewSubscriber:
-		return "OpNewSubscriber"
 	case OpNoSubscribers:
 		return "OpNoSubscribers"
 	case OpHasSubscribers:
@@ -38,12 +35,6 @@ func MsgNoSubscribers() Message {
 	}
 }
 
-func MsgNewSubscriber() Message {
-	return Message{
-		Op: OpNewSubscriber,
-	}
-}
-
 func MsgHasSubscribers() Message {
 	return Message{
 		Op: OpHasSubscribers,
@@ -56,7 +47,7 @@ func MsgSyncSubscribers() Message {
 	}
 }
 
-func MsgMessage(data []byte) Message {
+func MsgMessage(data string) Message {
 	return Message{
 		Op:      OpMessage,
 		Payload: data,

@@ -40,7 +40,7 @@ func main() {
 		}
 		logrus.WithFields(logrus.Fields{
 			"op":   message.TranslateOp(),
-			"data": string(message.Payload),
+			"data": message.Payload,
 		}).Info("received message")
 	}
 

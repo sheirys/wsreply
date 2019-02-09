@@ -17,10 +17,6 @@ func TestTranslateOp(t *testing.T) {
 			Expected: "OpMessage",
 		},
 		{
-			Op:       broker.OpNewSubscriber,
-			Expected: "OpNewSubscriber",
-		},
-		{
 			Op:       broker.OpNoSubscribers,
 			Expected: "OpNoSubscribers",
 		},
@@ -52,11 +48,6 @@ func TestMsgNoSubscribers(t *testing.T) {
 	assert.Equal(t, m.Op, broker.OpNoSubscribers)
 }
 
-func TestMsgNewSubscriber(t *testing.T) {
-	m := broker.MsgNewSubscriber()
-	assert.Equal(t, m.Op, broker.OpNewSubscriber)
-}
-
 func TestMsgHasSubscribers(t *testing.T) {
 	m := broker.MsgHasSubscribers()
 	assert.Equal(t, m.Op, broker.OpHasSubscribers)
@@ -68,7 +59,7 @@ func TestMsgSyncSubscribers(t *testing.T) {
 }
 
 func TestMsgMessage(t *testing.T) {
-	data := []byte("data")
+	data := "random_data"
 	m := broker.MsgMessage(data)
 	assert.Equal(t, m.Op, broker.OpMessage)
 	assert.Equal(t, m.Payload, data)

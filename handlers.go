@@ -13,68 +13,81 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func (a *Application) WSPublisher(w http.ResponseWriter, r *http.Request) {
+func (s *Server) router() *http.ServeMux {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/sub", s.WSSubscriber)
+	mux.HandleFunc("/pub", s.WSPublisher)
+
+	return mux
+}
+
+// WSPublisher is endpoint fo publishers.
+// Endpoint: /pub
+func (s *Server) WSPublisher(w http.ResponseWriter, r *http.Request) {
 	var (
 		ws  *websocket.Conn
 		err error
 	)
 
 	if ws, err = upgrader.Upgrade(w, r, nil); err != nil {
-		a.Log.WithError(err).Warn("cannot upgrade connection")
+		s.Log.WithError(err).Warn("cannot upgrade connection")
 		return
 	}
 	defer ws.Close()
 
-	if err := a.Broker.AttachPublisherStream(ws); err != nil {
-		a.Log.WithError(err).Warn("cannot attach publisher stream")
+	if err := s.Broker.AttachPublisherStream(ws); err != nil {
+		s.Log.WithError(err).Warn("cannot attach publisher stream")
 		return
 	}
-	defer a.Broker.Deattach(ws)
+	defer s.Broker.Deattach(ws)
 
 	for {
 		_, body, err := ws.ReadMessage()
 		if err != nil {
-			a.Log.WithError(err).Warn("connection error")
+			s.Log.WithError(err).Warn("connection error")
 			return
 		}
 
 		message := broker.Message{}
 		if err := json.Unmarshal(body, &message); err != nil {
-			a.Log.WithError(err).Warn("cannot unmarshal data")
+			s.Log.WithError(err).Warn("cannot unmarshal data")
 			return
 		}
 		message.Payload = Translate(message.Payload)
-		a.Broker.Broadcast(message)
+		s.Broker.Broadcast(message)
 	}
 }
 
-func (a *Application) WSSubscriber(w http.ResponseWriter, r *http.Request) {
+// WSSubscriber is endpoint for subscribers.
+// Endpoint: /sub
+func (s *Server) WSSubscriber(w http.ResponseWriter, r *http.Request) {
 	var (
 		ws  *websocket.Conn
 		err error
 	)
 
 	if ws, err = upgrader.Upgrade(w, r, nil); err != nil {
-		a.Log.WithError(err).Warn("cannot upgrade connection")
+		s.Log.WithError(err).Warn("cannot upgrade connection")
 		return
 	}
 	defer ws.Close()
 
-	if err = a.Broker.AttachSubscriberStream(ws); err != nil {
-		a.Log.WithError(err).Warn("cannot attach subscriber stream")
+	if err = s.Broker.AttachSubscriberStream(ws); err != nil {
+		s.Log.WithError(err).Warn("cannot attach subscriber stream")
 		return
 	}
-	defer a.Broker.Deattach(ws)
+	defer s.Broker.Deattach(ws)
 
 	for {
 		_, body, err := ws.ReadMessage()
 		if err != nil {
-			a.Log.WithError(err).Warn("connection error")
+			s.Log.WithError(err).Warn("connection error")
 			return
 		}
 
 		if err = ws.WriteMessage(websocket.TextMessage, body); err != nil {
-			a.Log.WithError(err).Warn("connection error")
+			s.Log.WithError(err).Warn("connection error")
 			return
 		}
 	}

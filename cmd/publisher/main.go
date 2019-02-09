@@ -55,7 +55,7 @@ func main() {
 		}
 		logrus.WithFields(logrus.Fields{
 			"op":   message.TranslateOp(),
-			"data": string(message.Payload),
+			"data": message.Payload,
 		}).Info("received message")
 
 		received <- message
@@ -89,14 +89,14 @@ func main() {
 			// TODO: Make PR for ws.SendJSON(..)?
 			logrus.WithFields(logrus.Fields{
 				"op":   msg.TranslateOp(),
-				"data": string(msg.Payload),
+				"data": msg.Payload,
 			}).Info("sending message")
 
 			if bytes, err := json.Marshal(msg); err == nil {
 				ws.SendBinary(bytes)
 			}
 		case <-ticker.C:
-			send <- broker.MsgMessage([]byte("hello!"))
+			send <- broker.MsgMessage("hello!")
 		}
 	}
 }
