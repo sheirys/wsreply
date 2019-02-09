@@ -117,3 +117,70 @@ func TestWSPublisherSyncHasSubscribers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, broker.MsgHasSubscribers(), received)
 }
+
+func TestWSSubscriberReceives(t *testing.T) {
+
+	app := testApplication()
+
+	pubHandler := httptest.NewServer(http.HandlerFunc(app.WSPublisher))
+	defer pubHandler.Close()
+
+	subHandler := httptest.NewServer(http.HandlerFunc(app.WSSubscriber))
+	defer subHandler.Close()
+
+	publisher, err := connectWithWS(pubHandler)
+	assert.NoError(t, err)
+	defer publisher.Close()
+
+	subscriber, err := connectWithWS(subHandler)
+	assert.NoError(t, err)
+	defer subscriber.Close()
+
+	publishedMsg := broker.MsgMessage([]byte("random_data"))
+
+	err = publisher.WriteJSON(publishedMsg)
+	assert.NoError(t, err)
+
+	receivedMsg := broker.Message{}
+	err = subscriber.ReadJSON(&receivedMsg)
+	assert.NoError(t, err)
+	assert.Equal(t, publishedMsg, receivedMsg)
+}
+
+func TestMultipleWSSubscriberReceives(t *testing.T) {
+
+	app := testApplication()
+
+	pubHandler := httptest.NewServer(http.HandlerFunc(app.WSPublisher))
+	defer pubHandler.Close()
+
+	subHandler := httptest.NewServer(http.HandlerFunc(app.WSSubscriber))
+	defer subHandler.Close()
+
+	publisher, err := connectWithWS(pubHandler)
+	assert.NoError(t, err)
+	defer publisher.Close()
+
+	subscriber1, err := connectWithWS(subHandler)
+	assert.NoError(t, err)
+	defer subscriber1.Close()
+
+	subscriber2, err := connectWithWS(subHandler)
+	assert.NoError(t, err)
+	defer subscriber2.Close()
+
+	publishedMsg := broker.MsgMessage([]byte("random_data"))
+
+	err = publisher.WriteJSON(publishedMsg)
+	assert.NoError(t, err)
+
+	receivedMsg := broker.Message{}
+
+	err = subscriber1.ReadJSON(&receivedMsg)
+	assert.NoError(t, err)
+	assert.Equal(t, publishedMsg, receivedMsg)
+
+	err = subscriber2.ReadJSON(&receivedMsg)
+	assert.NoError(t, err)
+	assert.Equal(t, publishedMsg, receivedMsg)
+}
