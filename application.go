@@ -2,11 +2,11 @@ package wsreply
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"sync"
 
 	"github.com/sheirys/wsreply/broker"
+	"github.com/sirupsen/logrus"
 )
 
 type Application struct {
@@ -17,7 +17,8 @@ type Application struct {
 
 	Addr   string
 	Broker broker.Broker
-	Log    *log.Logger
+	Log    *logrus.Logger
+	Debug  bool
 }
 
 func (a *Application) Start() error {
@@ -28,7 +29,7 @@ func (a *Application) Start() error {
 		Addr:    a.Addr,
 		Handler: a.router(),
 	}
-	a.Log.Printf("starting on %s", a.Addr)
+	a.Log.WithField("host", a.Addr).Info("starting server")
 
 	if err := a.Broker.Start(a.ctx, a.wg); err != nil {
 		return err
