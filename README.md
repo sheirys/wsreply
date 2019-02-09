@@ -13,10 +13,10 @@ Examples use [wscat](https://www.npmjs.com/package/wscat) websocket client.
 
 ## Server
 
-Server entrypoint can be found on `cmd/server/main.go`. Points of interest about server;
+Server entrypoint can be found on `cmd/server/main.go`. Points of interest about server:
 * `ws://localhost/pub` endpoint for publishers.
 * `ws://localhost/sub` endpoint for subscribers.
-* Endpoins expect or produces messages in form:
+* Endpoints expect or produces messages in form:
 ```
 {
     "op": <int>,         // op code
