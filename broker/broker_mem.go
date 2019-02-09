@@ -2,17 +2,17 @@ package broker
 
 import (
 	"context"
-	"log"
-	"os"
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 )
 
 type InMemBroker struct {
-	Log *log.Logger
-	ctx context.Context
-	wg  *sync.WaitGroup
+	Log   *logrus.Logger
+	Debug bool
+	ctx   context.Context
+	wg    *sync.WaitGroup
 
 	subscribers map[*websocket.Conn]bool
 	unsubscribe chan *websocket.Conn
@@ -21,45 +21,53 @@ type InMemBroker struct {
 }
 
 func (b *InMemBroker) AttachSubscriberStream(ws *websocket.Conn) error {
-	s := &Stream{
+	b.Log.WithField("connection", &ws).Info("new subscriber")
+	b.subscribe <- &Stream{
 		stream:      ws,
 		isPublisher: false,
 	}
-	b.subscribe <- s
 	return nil
 }
 
 func (b *InMemBroker) AttachPublisherStream(ws *websocket.Conn) error {
-	s := &Stream{
+	b.Log.WithField("connection", &ws).Info("new publisher")
+	b.subscribe <- &Stream{
 		stream:      ws,
 		isPublisher: true,
 	}
-	b.subscribe <- s
 	return nil
 }
 
 func (b *InMemBroker) Deattach(ws *websocket.Conn) error {
+	b.Log.WithField("connection", &ws).Info("disconnecting")
 	b.unsubscribe <- ws
 	return nil
 }
 
 func (b *InMemBroker) Broadcast(msg Message) error {
-	b.Log.Printf("broadcasting message %#v", msg)
+	b.Log.WithFields(logrus.Fields{
+		"op":   msg.TranslateOp(),
+		"data": string(msg.Payload),
+	}).Info("streaming message")
 	b.message <- msg
 	return nil
 }
 
 func (b *InMemBroker) Start(ctx context.Context, wg *sync.WaitGroup) error {
+	if b.Debug {
+		b.Log.SetLevel(logrus.DebugLevel)
+	}
+	b.Log.Info("starting broker")
 	b.ctx = ctx
 	b.wg = wg
 
-	b.wg.Add(1)
-
 	go func() {
+		wg.Add(1)
 		for {
 			select {
 			case <-b.ctx.Done():
 				b.dropAll()
+				wg.Done()
 				return
 			case sub := <-b.subscribe:
 				b.handleSubscribe(sub)
@@ -71,18 +79,18 @@ func (b *InMemBroker) Start(ctx context.Context, wg *sync.WaitGroup) error {
 		}
 	}()
 
-	b.wg.Done()
 	return nil
 }
 
-func NewInMemBroker() *InMemBroker {
+func NewInMemBroker(debug bool) *InMemBroker {
 	// FIXME: here is a lot of hardcoded sizes. Pass by argument or const?
 	return &InMemBroker{
 		message:     make(chan Message, 5),
 		subscribe:   make(chan *Stream, 5),
 		unsubscribe: make(chan *websocket.Conn, 5),
 		subscribers: make(map[*websocket.Conn]bool),
-		Log:         log.New(os.Stdout, "broker-", 1),
+		Log:         logrus.New(),
+		Debug:       debug,
 	}
 }
 
@@ -110,6 +118,7 @@ func (b *InMemBroker) broadcastHasSubscribers() {
 
 // broadcastToSubscribers will broadcast message to all subscribers in broker.
 func (b *InMemBroker) broadcastToSubscribers(msg Message) {
+	b.Log.WithField("op", msg.TranslateOp()).Debug("broadcasting to subscribers")
 	for s, isPublisher := range b.subscribers {
 		if !isPublisher {
 			go s.WriteJSON(msg)
@@ -119,6 +128,7 @@ func (b *InMemBroker) broadcastToSubscribers(msg Message) {
 
 // broadcastToPublishers will broadcast message to all publishers in broker.
 func (b *InMemBroker) broadcastToPublishers(msg Message) {
+	b.Log.WithField("op", msg.TranslateOp()).Debug("broadcasting to publishers")
 	for p, isPublisher := range b.subscribers {
 		if isPublisher {
 			go p.WriteJSON(msg)
@@ -131,12 +141,10 @@ func (b *InMemBroker) handleSubscribe(s *Stream) {
 	if !s.isPublisher {
 		b.broadcastHasSubscribers()
 	}
-	b.Log.Printf("new stream %x (pub: %t) (streams: %d)", &s, s.isPublisher, len(b.subscribers))
 }
 
 func (b *InMemBroker) handleUnsubscribe(ws *websocket.Conn) {
 	delete(b.subscribers, ws)
-	b.Log.Printf("unsubscribed stream %x (streams: %d)", &ws, len(b.subscribers))
 	b.handleOpSyncSubscribers()
 }
 
@@ -163,9 +171,8 @@ func (b *InMemBroker) handleOpSyncSubscribers() {
 }
 
 func (b *InMemBroker) dropAll() {
-	b.Log.Println("dropping connections")
+	b.Log.WithField("count", len(b.subscribers)).Info("dropping connections")
 	for conn := range b.subscribers {
 		conn.Close()
 	}
-	b.Log.Println("done")
 }
