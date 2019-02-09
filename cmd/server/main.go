@@ -27,7 +27,9 @@ func main() {
 		Addr:   *listen,
 		Log:    logrus.New(),
 	}
-	app.Start()
+	app.Init()
+	app.StartBroker()
+	app.StartHTTP()
 
 	<-stop
 	app.Stop()

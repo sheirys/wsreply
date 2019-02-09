@@ -124,7 +124,7 @@ func (b *InMemBroker) broadcastToSubscribers(msg Message) {
 	defer b.RUnlock()
 	for s, isPublisher := range b.subscribers {
 		if !isPublisher {
-			go s.WriteJSON(msg)
+			s.WriteJSON(msg)
 		}
 	}
 }
@@ -136,7 +136,7 @@ func (b *InMemBroker) broadcastToPublishers(msg Message) {
 	defer b.RUnlock()
 	for p, isPublisher := range b.subscribers {
 		if isPublisher {
-			go p.WriteJSON(msg)
+			p.WriteJSON(msg)
 		}
 	}
 }
