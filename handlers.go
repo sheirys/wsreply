@@ -13,7 +13,7 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func (a *Application) PublisherWS(w http.ResponseWriter, r *http.Request) {
+func (a *Application) WSPublisher(w http.ResponseWriter, r *http.Request) {
 	var (
 		ws  *websocket.Conn
 		err error
@@ -48,7 +48,7 @@ func (a *Application) PublisherWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *Application) SubscriberWS(w http.ResponseWriter, r *http.Request) {
+func (a *Application) WSSubscriber(w http.ResponseWriter, r *http.Request) {
 	var (
 		ws  *websocket.Conn
 		err error

@@ -21,7 +21,7 @@ type Application struct {
 	Debug  bool
 }
 
-func (a *Application) Start() error {
+func (a *Application) Init() error {
 	a.ctx, a.stopFunc = context.WithCancel(context.Background())
 	a.wg = &sync.WaitGroup{}
 
@@ -29,12 +29,11 @@ func (a *Application) Start() error {
 		Addr:    a.Addr,
 		Handler: a.router(),
 	}
+	return nil
+}
+
+func (a *Application) StartHTTP() error {
 	a.Log.WithField("host", a.Addr).Info("starting server")
-
-	if err := a.Broker.Start(); err != nil {
-		return err
-	}
-
 	go func() {
 		a.wg.Add(1)
 		if err := a.http.ListenAndServe(); err != nil {
@@ -42,8 +41,11 @@ func (a *Application) Start() error {
 		}
 		a.wg.Done()
 	}()
-
 	return nil
+}
+
+func (a *Application) StartBroker() error {
+	return a.Broker.Start()
 }
 
 func (a *Application) Stop() error {

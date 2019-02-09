@@ -7,8 +7,8 @@ import (
 func (a *Application) router() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/sub", a.SubscriberWS)
-	mux.HandleFunc("/pub", a.PublisherWS)
+	mux.HandleFunc("/sub", a.WSSubscriber)
+	mux.HandleFunc("/pub", a.WSPublisher)
 
 	return mux
 }
