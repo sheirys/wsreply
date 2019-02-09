@@ -31,12 +31,12 @@ func (a *Application) Start() error {
 	}
 	a.Log.WithField("host", a.Addr).Info("starting server")
 
-	if err := a.Broker.Start(a.ctx, a.wg); err != nil {
+	if err := a.Broker.Start(); err != nil {
 		return err
 	}
 
-	a.wg.Add(1)
 	go func() {
+		a.wg.Add(1)
 		if err := a.http.ListenAndServe(); err != nil {
 			a.Log.Println(err)
 		}
@@ -49,6 +49,7 @@ func (a *Application) Start() error {
 func (a *Application) Stop() error {
 	a.stopFunc()
 	a.http.Shutdown(a.ctx)
+	a.Broker.Stop()
 	a.wg.Wait()
 	return nil
 }

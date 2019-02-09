@@ -1,7 +1,6 @@
 package broker
 
 import (
-	"context"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -11,8 +10,8 @@ import (
 type InMemBroker struct {
 	Log   *logrus.Logger
 	Debug bool
-	ctx   context.Context
 	wg    *sync.WaitGroup
+	die   chan struct{}
 
 	subscribers map[*websocket.Conn]bool
 	unsubscribe chan *websocket.Conn
@@ -53,21 +52,19 @@ func (b *InMemBroker) Broadcast(msg Message) error {
 	return nil
 }
 
-func (b *InMemBroker) Start(ctx context.Context, wg *sync.WaitGroup) error {
+func (b *InMemBroker) Start() error {
 	if b.Debug {
 		b.Log.SetLevel(logrus.DebugLevel)
 	}
 	b.Log.Info("starting broker")
-	b.ctx = ctx
-	b.wg = wg
 
 	go func() {
-		wg.Add(1)
+		b.wg.Add(1)
 		for {
 			select {
-			case <-b.ctx.Done():
+			case <-b.die:
 				b.dropAll()
-				wg.Done()
+				b.wg.Done()
 				return
 			case sub := <-b.subscribe:
 				b.handleSubscribe(sub)
@@ -82,6 +79,12 @@ func (b *InMemBroker) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
+func (b *InMemBroker) Stop() error {
+	close(b.die)
+	b.wg.Wait()
+	return nil
+}
+
 func NewInMemBroker(debug bool) *InMemBroker {
 	// FIXME: here is a lot of hardcoded sizes. Pass by argument or const?
 	return &InMemBroker{
@@ -89,6 +92,8 @@ func NewInMemBroker(debug bool) *InMemBroker {
 		subscribe:   make(chan *Stream, 5),
 		unsubscribe: make(chan *websocket.Conn, 5),
 		subscribers: make(map[*websocket.Conn]bool),
+		die:         make(chan struct{}),
+		wg:          &sync.WaitGroup{},
 		Log:         logrus.New(),
 		Debug:       debug,
 	}
