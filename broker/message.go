@@ -31,3 +31,34 @@ func (m Message) TranslateOp() string {
 		return "unknown"
 	}
 }
+
+func MsgNoSubscribers() Message {
+	return Message{
+		Op: OpNoSubscribers,
+	}
+}
+
+func MsgNewSubscriber() Message {
+	return Message{
+		Op: OpNewSubscriber,
+	}
+}
+
+func MsgHasSubscribers() Message {
+	return Message{
+		Op: OpHasSubscribers,
+	}
+}
+
+func MsgSyncSubscribers() Message {
+	return Message{
+		Op: OpSyncSubscribers,
+	}
+}
+
+func MsgMessage(data []byte) Message {
+	return Message{
+		Op:      OpMessage,
+		Payload: data,
+	}
+}

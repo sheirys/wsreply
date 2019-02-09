@@ -44,9 +44,7 @@ func main() {
 
 	ws.OnConnected = func(ws gowebsocket.Socket) {
 		logrus.WithField("target", *target).Info("connected")
-		send <- broker.Message{
-			Op: broker.OpSyncSubscribers,
-		}
+		send <- broker.MsgSyncSubscribers()
 	}
 
 	ws.OnTextMessage = func(payload string, ws gowebsocket.Socket) {
@@ -98,10 +96,7 @@ func main() {
 				ws.SendBinary(bytes)
 			}
 		case <-ticker.C:
-			send <- broker.Message{
-				Op:      broker.OpMessage,
-				Payload: []byte("hello!"),
-			}
+			send <- broker.MsgMessage([]byte("hello!"))
 		}
 	}
 }
