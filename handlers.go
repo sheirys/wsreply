@@ -73,13 +73,8 @@ func (s *Server) WSSubscriber(w http.ResponseWriter, r *http.Request) {
 	defer s.Broker.Deattach(ws)
 
 	for {
-		_, body, err := ws.ReadMessage()
+		_, _, err := ws.ReadMessage()
 		if err != nil {
-			s.Log.WithError(err).Warn("connection error")
-			return
-		}
-
-		if err = ws.WriteMessage(websocket.TextMessage, body); err != nil {
 			s.Log.WithError(err).Warn("connection error")
 			return
 		}
