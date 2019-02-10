@@ -1,7 +1,6 @@
 package wsreply
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -43,14 +42,8 @@ func (s *Server) WSPublisher(w http.ResponseWriter, r *http.Request) {
 	defer s.Broker.Deattach(ws)
 
 	for {
-		_, body, err := ws.ReadMessage()
-		if err != nil {
-			s.Log.WithError(err).Warn("connection error")
-			return
-		}
-
 		message := broker.Message{}
-		if err := json.Unmarshal(body, &message); err != nil {
+		if err := ws.ReadJSON(&message); err != nil {
 			s.Log.WithError(err).Warn("cannot unmarshal data")
 			return
 		}
