@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// InMemBroker is Broker implementation that satisfies broker.Broker interface.
 type InMemBroker struct {
 	Log   *logrus.Logger
 	Debug bool
@@ -21,6 +22,8 @@ type InMemBroker struct {
 	sync.RWMutex
 }
 
+// AttachSubscriberStream attach subscribers stream to provided websocket
+// connection. Here messages received from publishers will be streamed.
 func (b *InMemBroker) AttachSubscriberStream(ws *websocket.Conn) error {
 	b.Log.WithField("connection", &ws).Info("new subscriber")
 	b.subscribe <- &Stream{
@@ -30,6 +33,8 @@ func (b *InMemBroker) AttachSubscriberStream(ws *websocket.Conn) error {
 	return nil
 }
 
+// AttachPublisherStream attach publisher stream to provided websocket
+// connection. Here messages about subscriber connections will be streamed.
 func (b *InMemBroker) AttachPublisherStream(ws *websocket.Conn) error {
 	b.Log.WithField("connection", &ws).Info("new publisher")
 	b.subscribe <- &Stream{
@@ -39,12 +44,14 @@ func (b *InMemBroker) AttachPublisherStream(ws *websocket.Conn) error {
 	return nil
 }
 
+// Deattach this websocket connection from all streams.
 func (b *InMemBroker) Deattach(ws *websocket.Conn) error {
 	b.Log.WithField("connection", &ws).Info("disconnecting")
 	b.unsubscribe <- ws
 	return nil
 }
 
+// Broadcast should send message to all subscribers in broker.
 func (b *InMemBroker) Broadcast(msg Message) error {
 	b.Log.WithFields(logrus.Fields{
 		"op":   msg.TranslateOp(),
@@ -54,6 +61,8 @@ func (b *InMemBroker) Broadcast(msg Message) error {
 	return nil
 }
 
+// Start initialize all variables required by broker. This should be called
+// before use of other broker functions.
 func (b *InMemBroker) Start() error {
 	if b.Debug {
 		b.Log.SetLevel(logrus.DebugLevel)
@@ -81,12 +90,14 @@ func (b *InMemBroker) Start() error {
 	return nil
 }
 
+// Stop broker, disconnect all subscribers and publishers.
 func (b *InMemBroker) Stop() error {
 	close(b.die)
 	b.wg.Wait()
 	return nil
 }
 
+// NewInMemBroker returns InMemBroker with predefined configurations.
 func NewInMemBroker(debug bool) *InMemBroker {
 	// FIXME: here is a lot of hardcoded sizes. Pass by argument or const?
 	return &InMemBroker{
@@ -107,6 +118,8 @@ func (b *InMemBroker) broadcastNoSubscribers() {
 	b.broadcastToPublishers(MsgNoSubscribers())
 }
 
+// broadcastHasSubscribers notifies all publishers that there is some listening
+// subscribers on broker.
 func (b *InMemBroker) broadcastHasSubscribers() {
 	b.broadcastToPublishers(MsgHasSubscribers())
 }

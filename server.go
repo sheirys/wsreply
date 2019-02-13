@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Server is main wsreply application. Here broker and http server are hold
 type Server struct {
 	ctx      context.Context
 	stopFunc context.CancelFunc
@@ -21,6 +22,8 @@ type Server struct {
 	Debug  bool
 }
 
+// Init should be called before using other Server functions. Here various
+// variable initiations should be applied.
 func (s *Server) Init() error {
 	s.ctx, s.stopFunc = context.WithCancel(context.Background())
 	s.wg = &sync.WaitGroup{}
@@ -32,10 +35,11 @@ func (s *Server) Init() error {
 	return nil
 }
 
+// StartHTTP will start HTTP server on Server struct.
 func (s *Server) StartHTTP() error {
 	s.Log.WithField("host", s.Addr).Info("starting server")
+	s.wg.Add(1)
 	go func() {
-		s.wg.Add(1)
 		if err := s.http.ListenAndServe(); err != nil {
 			s.Log.Println(err)
 		}
@@ -44,10 +48,12 @@ func (s *Server) StartHTTP() error {
 	return nil
 }
 
+// StartBroker will start broker on Server struct.
 func (s *Server) StartBroker() error {
 	return s.Broker.Start()
 }
 
+// Stop will stop http and broker services.
 func (s *Server) Stop() error {
 	s.stopFunc()
 	s.http.Shutdown(s.ctx)
