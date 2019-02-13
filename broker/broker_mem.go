@@ -78,11 +78,17 @@ func (b *InMemBroker) Start() error {
 				b.wg.Done()
 				return
 			case sub := <-b.subscribe:
-				b.handleSubscribe(sub)
+				if err := b.handleSubscribe(sub); err != nil {
+					b.Log.WithError(err).Error("handling subscribe")
+				}
 			case unsub := <-b.unsubscribe:
-				b.handleUnsubscribe(unsub)
+				if err := b.handleUnsubscribe(unsub); err != nil {
+					b.Log.WithError(err).Error("handling unsubscribe")
+				}
 			case msg := <-b.message:
-				b.handleMessage(msg)
+				if err := b.handleMessage(msg); err != nil {
+					b.Log.WithError(err).Error("handling message")
+				}
 			}
 		}
 	}()
@@ -154,20 +160,21 @@ func (b *InMemBroker) broadcastToPublishers(msg Message) error {
 	return nil
 }
 
-func (b *InMemBroker) handleSubscribe(s *Stream) {
+func (b *InMemBroker) handleSubscribe(s *Stream) error {
 	b.Lock()
 	b.subscribers[s.stream] = s.isPublisher
 	b.Unlock()
 	if !s.isPublisher {
-		b.broadcastHasSubscribers()
+		return b.broadcastHasSubscribers()
 	}
+	return nil
 }
 
-func (b *InMemBroker) handleUnsubscribe(ws *websocket.Conn) {
+func (b *InMemBroker) handleUnsubscribe(ws *websocket.Conn) error {
 	b.Lock()
 	delete(b.subscribers, ws)
 	b.Unlock()
-	b.handleOpSyncSubscribers()
+	return b.handleOpSyncSubscribers()
 }
 
 func (b *InMemBroker) handleMessage(m Message) error {
