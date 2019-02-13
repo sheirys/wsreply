@@ -56,8 +56,12 @@ func (s *Server) StartBroker() error {
 // Stop will stop http and broker services.
 func (s *Server) Stop() error {
 	s.stopFunc()
-	s.http.Shutdown(s.ctx)
-	s.Broker.Stop()
+	if err := s.http.Shutdown(s.ctx); err != nil {
+		s.Log.WithError(err).Error("stopping http")
+	}
+	if err := s.Broker.Stop(); err != nil {
+		s.Log.WithError(err).Error("stopping http")
+	}
 	s.wg.Wait()
 	return nil
 }

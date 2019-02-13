@@ -114,38 +114,44 @@ func NewInMemBroker(debug bool) *InMemBroker {
 
 // broadcastNoSubscribers will notify all publishers that there is no
 // subscribers left in broker.
-func (b *InMemBroker) broadcastNoSubscribers() {
-	b.broadcastToPublishers(MsgNoSubscribers())
+func (b *InMemBroker) broadcastNoSubscribers() error {
+	return b.broadcastToPublishers(MsgNoSubscribers())
 }
 
 // broadcastHasSubscribers notifies all publishers that there is some listening
 // subscribers on broker.
-func (b *InMemBroker) broadcastHasSubscribers() {
-	b.broadcastToPublishers(MsgHasSubscribers())
+func (b *InMemBroker) broadcastHasSubscribers() error {
+	return b.broadcastToPublishers(MsgHasSubscribers())
 }
 
 // broadcastToSubscribers will broadcast message to all subscribers in broker.
-func (b *InMemBroker) broadcastToSubscribers(msg Message) {
+func (b *InMemBroker) broadcastToSubscribers(msg Message) error {
 	b.Log.WithField("op", msg.TranslateOp()).Debug("broadcasting to subscribers")
 	b.RLock()
 	defer b.RUnlock()
 	for s, isPublisher := range b.subscribers {
 		if !isPublisher {
-			s.WriteJSON(msg)
+			if err := s.WriteJSON(msg); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 // broadcastToPublishers will broadcast message to all publishers in broker.
-func (b *InMemBroker) broadcastToPublishers(msg Message) {
+func (b *InMemBroker) broadcastToPublishers(msg Message) error {
 	b.Log.WithField("op", msg.TranslateOp()).Debug("broadcasting to publishers")
 	b.RLock()
 	defer b.RUnlock()
 	for p, isPublisher := range b.subscribers {
 		if isPublisher {
-			p.WriteJSON(msg)
+			if err := p.WriteJSON(msg); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 func (b *InMemBroker) handleSubscribe(s *Stream) {
@@ -164,28 +170,27 @@ func (b *InMemBroker) handleUnsubscribe(ws *websocket.Conn) {
 	b.handleOpSyncSubscribers()
 }
 
-func (b *InMemBroker) handleMessage(m Message) {
+func (b *InMemBroker) handleMessage(m Message) error {
 	switch m.Op {
 	case OpMessage:
-		b.broadcastToSubscribers(m)
+		return b.broadcastToSubscribers(m)
 	case OpSyncSubscribers:
-		b.handleOpSyncSubscribers()
+		return b.handleOpSyncSubscribers()
 	case OpNoSubscribers:
-		b.broadcastNoSubscribers()
+		return b.broadcastNoSubscribers()
 	}
+	return nil
 }
 
-func (b *InMemBroker) handleOpSyncSubscribers() {
+func (b *InMemBroker) handleOpSyncSubscribers() error {
 	b.RLock()
 	defer b.RUnlock()
 	for _, isPublisher := range b.subscribers {
 		if !isPublisher {
-			b.broadcastHasSubscribers()
-			return
+			return b.broadcastHasSubscribers()
 		}
 	}
-	b.broadcastNoSubscribers()
-	return
+	return b.broadcastNoSubscribers()
 }
 
 func (b *InMemBroker) dropAll() {

@@ -15,14 +15,18 @@ import (
 )
 
 // testServer will initialize default wsreply server for testing.
-func testServer() *wsreply.Server {
+func testServer() (*wsreply.Server, error) {
 	srv := &wsreply.Server{
 		Broker: broker.NewInMemBroker(true),
 		Log:    logrus.New(),
 	}
-	srv.Init()
-	srv.StartBroker()
-	return srv
+	if err := srv.Init(); err != nil {
+		return srv, err
+	}
+	if err := srv.StartBroker(); err != nil {
+		return srv, err
+	}
+	return srv, nil
 }
 
 // connectWithWS will initialize ws connection to testserver
@@ -35,7 +39,8 @@ func connectWithWS(s *httptest.Server) (*websocket.Conn, error) {
 // TestWSSubscriberCanConnect will test if subscriber is able to connect to
 // server.
 func TestWSSubscriberCanConnect(t *testing.T) {
-	srv := testServer()
+	srv, err := testServer()
+	assert.NoError(t, err)
 	defer srv.Stop()
 
 	s := httptest.NewServer(http.HandlerFunc(srv.WSSubscriber))
@@ -47,7 +52,8 @@ func TestWSSubscriberCanConnect(t *testing.T) {
 }
 
 func TestWSPublisherCanConnect(t *testing.T) {
-	srv := testServer()
+	srv, err := testServer()
+	assert.NoError(t, err)
 	defer srv.Stop()
 
 	s := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))
@@ -59,7 +65,8 @@ func TestWSPublisherCanConnect(t *testing.T) {
 }
 
 func TestWSPublisherCanPublish(t *testing.T) {
-	srv := testServer()
+	srv, err := testServer()
+	assert.NoError(t, err)
 	defer srv.Stop()
 
 	s := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))
@@ -74,7 +81,8 @@ func TestWSPublisherCanPublish(t *testing.T) {
 }
 
 func TestWSPublisherSyncNoSubscribers(t *testing.T) {
-	srv := testServer()
+	srv, err := testServer()
+	assert.NoError(t, err)
 	defer srv.Stop()
 
 	pubHandler := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))
@@ -94,7 +102,8 @@ func TestWSPublisherSyncNoSubscribers(t *testing.T) {
 }
 
 func TestWSPublisherSyncHasSubscribers(t *testing.T) {
-	srv := testServer()
+	srv, err := testServer()
+	assert.NoError(t, err)
 	defer srv.Stop()
 
 	pubHandler := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))
@@ -121,7 +130,8 @@ func TestWSPublisherSyncHasSubscribers(t *testing.T) {
 }
 
 func TestWSSubscriberReceives(t *testing.T) {
-	srv := testServer()
+	srv, err := testServer()
+	assert.NoError(t, err)
 	defer srv.Stop()
 
 	pubHandler := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))
@@ -151,7 +161,8 @@ func TestWSSubscriberReceives(t *testing.T) {
 
 func TestMultipleWSSubscriberReceives(t *testing.T) {
 
-	srv := testServer()
+	srv, err := testServer()
+	assert.NoError(t, err)
 	defer srv.Stop()
 
 	pubHandler := httptest.NewServer(http.HandlerFunc(srv.WSPublisher))

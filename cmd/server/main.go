@@ -27,10 +27,19 @@ func main() {
 		Addr:   *listen,
 		Log:    logrus.New(),
 	}
-	srv.Init()
-	srv.StartBroker()
-	srv.StartHTTP()
+	if err := srv.Init(); err != nil {
+		logrus.WithError(err).Fatal("cannot init")
+	}
+	if err := srv.StartBroker(); err != nil {
+		logrus.WithError(err).Fatal("cannot start broker")
+	}
+	if err := srv.StartHTTP(); err != nil {
+		logrus.WithError(err).Fatal("cannot start http server")
+	}
 
 	<-stop
-	srv.Stop()
+
+	if err := srv.Stop(); err != nil {
+		logrus.WithError(err).Fatal("stopping server")
+	}
 }
